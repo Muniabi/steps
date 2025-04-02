@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
 import { Training } from "./types";
-import { formatDateForInput, parseDate } from "./utils/dateUtils";
+import {
+    formatDateForInput,
+    formatDateForEdit,
+    parseDate,
+} from "./utils/dateUtils";
 import TrainingForm from "./components/TrainingForm";
 import TrainingTable from "./components/TrainingTable";
 
@@ -77,7 +81,7 @@ function App() {
 
     const handleEdit = (training: Training) => {
         setFormData({
-            date: training.date,
+            date: formatDateForEdit(training.date),
             distance: training.distance.toString(),
         });
         setEditingId(training.id);

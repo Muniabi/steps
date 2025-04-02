@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
-
-interface Training {
-    id: number;
-    date: string;
-    distance: number;
-}
+import { Training } from "./types";
+import { formatDateForInput, parseDate } from "./utils/dateUtils";
+import TrainingForm from "./components/TrainingForm";
+import TrainingTable from "./components/TrainingTable";
 
 function App() {
     const [trainings, setTrainings] = useState<Training[]>(() => {
@@ -22,27 +20,16 @@ function App() {
         localStorage.setItem("trainings", JSON.stringify(trainings));
     }, [trainings]);
 
-    const formatDate = (dateString: string) => {
-        const [year, month, day] = dateString.split("-");
-        return `${day}.${month}.${year}`;
-    };
-
-    const parseDate = (dateString: string): number => {
-        const [day, month, year] = dateString.split(".");
-        return new Date(`${year}-${month}-${day}`).getTime();
-    };
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const { date, distance } = formData;
         const distanceNum = parseFloat(distance);
-        const formattedDate = formatDate(date);
+        const formattedDate = formatDateForInput(date);
 
-        if (!formattedDate.match(/^\d{2}\.\d{2}\.\d{4}$/) || isNaN(distanceNum))
-            return;
+        if (!date || isNaN(distanceNum) || distanceNum <= 0) return;
 
         setTrainings((prev) => {
-            const existingIndex = prev.findIndex(
+            const existingTraining = prev.find(
                 (t) => t.date === formattedDate && t.id !== editingId
             );
 
@@ -60,10 +47,14 @@ function App() {
                     .sort((a, b) => parseDate(b.date) - parseDate(a.date));
             }
 
-            if (existingIndex > -1) {
-                const updated = [...prev];
-                updated[existingIndex].distance += distanceNum;
-                return updated;
+            if (existingTraining) {
+                return prev
+                    .map((t) =>
+                        t.date === formattedDate
+                            ? { ...t, distance: t.distance + distanceNum }
+                            : t
+                    )
+                    .sort((a, b) => parseDate(b.date) - parseDate(a.date));
             }
 
             return [
@@ -85,9 +76,8 @@ function App() {
     };
 
     const handleEdit = (training: Training) => {
-        const [day, month, year] = training.date.split(".");
         setFormData({
-            date: `${year}-${month}-${day}`,
+            date: training.date,
             distance: training.distance.toString(),
         });
         setEditingId(training.id);
@@ -95,74 +85,17 @@ function App() {
 
     return (
         <div className="App">
-            <form onSubmit={handleSubmit} className="form">
-                <div className="input-group">
-                    <label>Дата (ДД.ММ.ГГГГ)</label>
-                    <input
-                        type="date"
-                        value={formData.date}
-                        onChange={(e) =>
-                            setFormData({ ...formData, date: e.target.value })
-                        }
-                        required
-                    />
-                </div>
-                <div className="input-group">
-                    <label>Пройдено км</label>
-                    <input
-                        type="float"
-                        step="0.1"
-                        value={formData.distance}
-                        onChange={(e) =>
-                            setFormData({
-                                ...formData,
-                                distance: e.target.value,
-                            })
-                        }
-                        required
-                        min="0"
-                    />
-                </div>
-                <button type="submit">
-                    {editingId ? "Обновить" : "Добавить"}
-                </button>
-            </form>
-
-            <div className="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Дата</th>
-                            <th>Пройдено км</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {trainings.map((training) => (
-                            <tr key={training.id}>
-                                <td>{training.date}</td>
-                                <td>{training.distance.toFixed(1)}</td>
-                                <td>
-                                    <button
-                                        className="edit-btn"
-                                        onClick={() => handleEdit(training)}
-                                    >
-                                        ✎
-                                    </button>
-                                    <button
-                                        className="delete-btn"
-                                        onClick={() =>
-                                            handleDelete(training.id)
-                                        }
-                                    >
-                                        ✖
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            <TrainingForm
+                formData={formData}
+                setFormData={setFormData}
+                editingId={editingId}
+                onSubmit={handleSubmit}
+            />
+            <TrainingTable
+                trainings={trainings}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+            />
         </div>
     );
 }
